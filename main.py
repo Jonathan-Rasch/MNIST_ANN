@@ -51,6 +51,10 @@ fig_accuracy = plt.figure(figsize=(8,8))
 fig_accuracy_x_axis = []
 fig_accuracy_y_axis = []
 ########################################################################################################################
+# Saver for saving model
+########################################################################################################################
+saver = tf.train.Saver()
+########################################################################################################################
 # session
 ########################################################################################################################
 init = tf.global_variables_initializer()
@@ -62,6 +66,7 @@ with tf.Session() as sess:
         sess.run(fetches=train, feed_dict={X: batch_x, y_true: batch_y})#training
         accScore = sess.run(fetches=evaluate, feed_dict={X: mnist.test.images, y_true: mnist.test.labels})
         print("AVG ACCURACY: {} %".format(round(accScore* 100,2)))
+
         ########################################################################################################################
         # Plotting
         ########################################################################################################################
@@ -70,6 +75,7 @@ with tf.Session() as sess:
         fig_inputs.clear()
         fig_inputs.suptitle("Input image batch")
         fig_inputs.set_facecolor('gray')
+        #print(sess.run(fetches=y,feed_dict={X: batch_x[0]})) # printing probabilities
         for i in range(1, 1 + columns * rows):
             axes = fig_inputs.add_subplot(rows, columns, i)
             if(correct_on_training_set[i-1]):
@@ -93,4 +99,10 @@ with tf.Session() as sess:
         acc_axes.set_xlim(left=0,auto=True)
         acc_line, = acc_axes.plot(fig_accuracy_x_axis, fig_accuracy_y_axis)
         plt.pause(0.05)
+    ########################################################################################################################
+    # saving
+    ########################################################################################################################
+    save_path = saver.save(sess, "MODEL_2/model.ckpt")
+    print("Model saved in path: %s" % save_path)
+
 
