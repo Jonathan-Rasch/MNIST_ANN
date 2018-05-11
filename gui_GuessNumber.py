@@ -43,7 +43,7 @@ class GUI:
         self.X = tf.placeholder(tf.float32, shape=[None, 784], name="inputs")  # inputs
         self.W = tf.Variable(initial_value=tf.random_normal(shape=[784, 10]), name="weights")  # weights
         self.b = tf.Variable(initial_value=tf.random_normal(shape=[10]), name="bias")
-        self.y = tf.matmul(self.X, self.W) + self.b
+        self.y = tf.nn.softmax(tf.matmul(self.X, self.W) + self.b)
         saver = tf.train.Saver()
         self.session = tf.Session()
         saver.restore(self.session,"MODEL/model.ckpt")
@@ -109,8 +109,18 @@ class GUI:
             self.map.append(0)
         self.drawingMode = False
         self.drawCanvas()
+        self.draw_figure()
 
     def draw_figure(self,data=[1/10,1/10,1/10,1/10,1/10,1/10,1/10,1/10,1/10,1/10], loc=(0, 0)):
+        # determining pred
+        max = 0
+        pred_num = 0
+        for index,val in enumerate(data):
+            if(val>max):
+                max = val
+                pred_num = index
+        self.predLabel.configure(text="PREDICTION: {} ".format(pred_num))
+        # plotting
         canvas = self.graph
         figure = mpl.figure.Figure(figsize=(4.2, 1.8))
         figure_canvas_agg = FigureCanvasAgg(figure)

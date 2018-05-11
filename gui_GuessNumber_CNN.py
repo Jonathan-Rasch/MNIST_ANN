@@ -13,7 +13,7 @@ class GUI:
     def __init__(self,root):
         self.root = root
         # setting title and layout
-        root.title("NN number predict.")
+        root.title("CNN number predict.")
         root.geometry("420x{}".format(14*15+28*15))
         root.resizable(False, False)
         # drawing map
@@ -34,6 +34,7 @@ class GUI:
         self.drawingMode = False
         self.canvas.bind('<Motion>',self.mmove)
         self.canvas.bind("<Button-1>", self.mclick)
+        self.calls_to_draw = 0
         #graph
         self.graph = tk.Canvas(root,width=28*15,height=14*15)
         self.graph.grid(row=2,column=0,columnspan=2)
@@ -45,9 +46,9 @@ class GUI:
         # utility functions
         ########################################################################################################################
 
-        def initialiseWeights(shape):
+        def initialiseWeights(shape, name):
             init_random_dist = tf.truncated_normal(shape, stddev=0.1)
-            return tf.Variable(initial_value=init_random_dist)
+            return tf.Variable(initial_value=init_random_dist, name=name)
 
         def initialiseBias(shape):
             init_bias_values = tf.constant(0.1, shape=shape)
@@ -65,15 +66,15 @@ class GUI:
             # inputTensor --> [Batch,Height,Width,Channel]
             return tf.nn.max_pool(value=inputTensor, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding="SAME")
 
-        def convolutionalLayer(inputTensor, shape):
+        def convolutionalLayer(inputTensor, shape, name):
             # inputTensor --> [batch,height,width,channel]
-            weights = initialiseWeights(shape)
+            weights = initialiseWeights(shape, name=name)
             bias = initialiseBias([shape[3]])
             return tf.nn.relu(convo2d(inputTensor, weights) + bias)
 
-        def denseLayer(inputTensor, size):
+        def denseLayer(inputTensor, size, name):
             in_size = int(inputTensor.get_shape()[1])  # 0th element is batch
-            weights = initialiseWeights([in_size, size])
+            weights = initialiseWeights([in_size, size], name=name)
             bias = initialiseBias([size])
             return tf.matmul(inputTensor, weights) + bias
 
@@ -86,29 +87,30 @@ class GUI:
         ########################################################################################################################
         self.image_input = tf.reshape(self.x, shape=[-1, 28, 28, 1])
         # convolution and pooling 1
-        self.convo1_layer = convolutionalLayer(self.image_input, shape=[6, 6, 1, 32])
+        self.convo1_layer = convolutionalLayer(self.image_input, shape=[10, 10, 1, 32],name="conv1")
         self.pooling1_layer = max_pool_2x2(self.convo1_layer)  # size is now changed to [-1,14,14,32]
         # convolution and pooling 2
-        self.convo2_layer = convolutionalLayer(self.pooling1_layer, shape=[5, 5, 32, 64])
+        self.convo2_layer = convolutionalLayer(self.pooling1_layer, shape=[7, 7, 32, 64],name="conv2")
         self.pooling2_layer = max_pool_2x2(self.convo2_layer)  # size is now changed to [-1,7,7,64]
         # flattening
         self.flattened_layer = tf.reshape(self.pooling2_layer, shape=[-1, 7 * 7 * 64])
         # dense layer and dropout 1
-        self.dense1_layer = tf.nn.relu(denseLayer(self.flattened_layer, size=1024))
+        self.dense1_layer = tf.nn.relu(denseLayer(self.flattened_layer, size=1024,name="dense1"))
         self.hold_probability = tf.placeholder(tf.float32)
         self.dense1_dropout = tf.nn.dropout(self.dense1_layer, keep_prob=self.hold_probability)
-        # dense layer and dropout 2
-        self.dense2_layer = tf.nn.relu(denseLayer(self.dense1_dropout, size=512))
-        self.dense2_dropout = tf.nn.dropout(self.dense2_layer, keep_prob=self.hold_probability)
+        # # dense layer and dropout 2
+        # self.dense2_layer = tf.nn.relu(denseLayer(self.dense1_dropout, size=256))
+        # self.dense2_dropout = tf.nn.dropout(self.dense2_layer, keep_prob=self.hold_probability)
         # output layer
-        self.output_layer = denseLayer(self.dense2_dropout, size=10)
+        self.output_layer = denseLayer(self.dense1_dropout, size=10,name="dense2")
         self.predict = tf.nn.softmax(self.output_layer)
         ########################################################################################################################
         # loss function and optimiser
         ########################################################################################################################
         saver = tf.train.Saver()
         self.session = tf.Session()
-        saver.restore(self.session, "MODEL_2/model.ckpt")
+        saver.restore(self.session, "MODEL_3/model.ckpt")
+        self.session.run(fetches=tf.local_variables_initializer())
 
     def drawCanvas(self):
         self.canvas.create_rectangle(0, 0, 28 * SIZE_UNIT, 28 * SIZE_UNIT, fill="gray")
@@ -139,8 +141,9 @@ class GUI:
                 if(cell >= 0 and cell < 784):
                     self.map[cell] += 0.15
                     if (self.map[cell]) >= 1: self.map[cell] = 1
-            self.map[list_index] += 0.5
+            self.map[list_index] += 0.65
             if (self.map[list_index]) >= 1: self.map[cell] = 1
+            self.calls_to_draw += 1
 
     def normalisePred(self,predData):
         predData = predData[0]
@@ -173,6 +176,15 @@ class GUI:
         self.drawCanvas()
 
     def draw_figure(self,data=[1/10,1/10,1/10,1/10,1/10,1/10,1/10,1/10,1/10,1/10], loc=(0, 0)):
+        # determining pred
+        max = 0
+        pred_num = 0
+        for index, val in enumerate(data):
+            if (val > max):
+                max = val
+                pred_num = index
+        self.predLabel.configure(text="PREDICTION: {} ".format(pred_num))
+        # plot
         canvas = self.graph
         figure = mpl.figure.Figure(figsize=(4.2, 1.8))
         figure_canvas_agg = FigureCanvasAgg(figure)

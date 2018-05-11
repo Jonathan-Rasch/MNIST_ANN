@@ -26,7 +26,7 @@ y = tf.matmul(X,W) + b
 ########################################################################################################################
 # Loss function
 ########################################################################################################################
-y_true = tf.placeholder(tf.float32,[None,10])
+y_true = tf.nn.sigmoid(tf.placeholder(tf.float32,[None,10]))
 cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_true,logits=y))
 ########################################################################################################################
 # Optimiser
@@ -58,18 +58,25 @@ saver = tf.train.Saver()
 # session
 ########################################################################################################################
 init = tf.global_variables_initializer()
+step_before_plot = 1
+step_counter = 0
 with tf.Session() as sess:
-    sess.run(init) # initialising global variables
-    for step in range(1000):
-        batch_x,batch_y = mnist.train.next_batch(batch_size=16) # this is usually hard
+    sess.run(init) # initialising global variable
+    for step in range(10000):
+        step_counter += 1
+        batch_x,batch_y = mnist.train.next_batch(batch_size=32) # this is usually hard
         correct_on_training_set = sess.run(fetches=correct_pred, feed_dict={X: batch_x, y_true: batch_y})
         sess.run(fetches=train, feed_dict={X: batch_x, y_true: batch_y})#training
+        ########################################################################################################################
+        # eval and Plotting
+        ########################################################################################################################
+        if (step_counter < step_before_plot):
+            continue
+        else:
+            step_counter = 0
+            step_before_plot += 1
         accScore = sess.run(fetches=evaluate, feed_dict={X: mnist.test.images, y_true: mnist.test.labels})
-        print("AVG ACCURACY: {} %".format(round(accScore* 100,2)))
-
-        ########################################################################################################################
-        # Plotting
-        ########################################################################################################################
+        print("AVG ACCURACY: {} %".format(round(accScore * 100, 2)))
         #input data
         plt.figure(1)
         fig_inputs.clear()
@@ -98,11 +105,14 @@ with tf.Session() as sess:
         acc_axes.set_ylabel("Average accuracy ({}%)".format(round(accScore*100,2)))
         acc_axes.set_xlim(left=0,auto=True)
         acc_line, = acc_axes.plot(fig_accuracy_x_axis, fig_accuracy_y_axis)
+        if(step == 0):
+            plt.pause(10)
+            input("press any key to continue")
         plt.pause(0.05)
     ########################################################################################################################
     # saving
     ########################################################################################################################
-    save_path = saver.save(sess, "MODEL_2/model.ckpt")
+    save_path = saver.save(sess, "MODEL/model.ckpt")
     print("Model saved in path: %s" % save_path)
 
 
