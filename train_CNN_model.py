@@ -2,6 +2,7 @@ import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 ########################################################################################################################
 # loading the dataset
@@ -87,7 +88,8 @@ fig_inputs=plt.figure(figsize=(8, 8))
 fig_accuracy = plt.figure(figsize=(8,8))
 fig_accuracy_x_axis = []
 fig_accuracy_y_axis = []
-fig_kernels_conv1 = plt.figure(figsize=(8,8))
+fig_kernels_conv1 = plt.figure(figsize=(4,8))
+gs = gridspec.GridSpec(8,4)
 correct_pred = tf.equal(tf.argmax(output_layer,axis=1), tf.argmax(y_true,axis=1))
 ########################################################################################################################
 # TRAINING THE MODEL
@@ -105,7 +107,7 @@ with tf.Session() as sess:
     for step in range(0,MAX_STEP):
         x_train,y_train = mnist_data.train.next_batch(batch_size=16) # friends dont let friends use large mini batches (we want random gradient to escape local minima !)
         sess.run(fetches=train, feed_dict={x: x_train, y_true: y_train, hold_probability: 0.65})
-        if (step%100 == 0):
+        if (step%5 == 0):
             print("---------------------------------------------------------------------")
             correct_on_training_set = sess.run(fetches=correct_pred, feed_dict={x: x_train, y_true: y_train, hold_probability: 0.65})
             print("STEP {}".format(step))
@@ -171,18 +173,25 @@ with tf.Session() as sess:
                 kernels[filter_index].append(weight)
             plt.figure(3)
             fig_kernels_conv1.clear()
-            fig_kernels_conv1.suptitle("Input image batch")
+            fig_kernels_conv1.suptitle("Convolution 1 kernels")
             fig_kernels_conv1.set_facecolor('gray')
             columns = 4
             rows = 8
-            for i in range(1, columns * rows + 1):
-                axes = fig_kernels_conv1.add_subplot(rows, columns, i)
-                kernel_img = kernels[(i - 1)][0]
+            gs.update(wspace=0.025, hspace=0.025)
+            for i in range(0, columns * rows):
+                axes = plt.subplot(gs[i])
+                plt.axis('on')
+                kernel_img = kernels[(i)][0]
                 plt.imshow(kernel_img)
                 axes.set_yticks([])
                 axes.set_xticks([])
+                axes.set_aspect('equal')
             plt.pause(0.05)
-            #print(feature_weights)
+            ########################################################################################################################
+            # convolution 2 layer
+            ########################################################################################################################
+            feature_weights = np.array(sess.run(tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,'conv2:0')))
+            print(feature_weights)
         if (step%1000 == 0 and step > 0):# float(acc_val) > prev_accuracy and step > 1):
             prev_accuracy = float(acc_val)
             print("SAVING MODEL...")
